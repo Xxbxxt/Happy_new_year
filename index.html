@@ -161,7 +161,7 @@
         <div class="curtain-right"></div>
         
         <div class="absolute inset-0 flex flex-col items-center justify-center z-[110] text-center px-4" id="introUI">
-            <h2 id="introGreeting" class="text-2xl mb-8 font-light tracking-widest text-yellow-200 uppercase">You have a message</h2>
+            <h2 id="introGreeting" class="text-2xl mb-8 font-light tracking-widest text-yellow-200 uppercase text-center">You have a message</h2>
             <div class="gift-trigger bg-white/10 p-8 rounded-full border border-yellow-500/30 backdrop-blur-sm" onclick="openMessage()">
                 <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M20 12V8H4v4"/>
@@ -273,14 +273,15 @@
     </div>
 
     <script>
-        const apiKey = ""; // Gemini API Key is automatically handled by the Canvas environment
+        const apiKey = ""; // Managed by environment
         let currentWish = "From home to home 🏠\nFrom heart to heart ❤️";
 
+        // Initial setup from URL
         const urlParams = new URLSearchParams(window.location.search);
         const nameParam = urlParams.get('n');
         const wishParam = urlParams.get('w');
         const defaultName = 'Gold_Roger';
-        const senderName = nameParam ? decodeURIComponent(nameParam).replace(/-/g, ' ') : defaultName;
+        const senderName = nameParam ? decodeURIComponent(nameParam) : defaultName;
 
         if (wishParam) {
             currentWish = decodeURIComponent(wishParam);
@@ -307,9 +308,10 @@
             modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
         }
 
-        async function callGemini(payload, endpoint = "generateContent") {
-            const model = endpoint === "generateContent" ? "gemini-2.5-flash-preview-09-2025" : "gemini-2.5-flash-preview-tts";
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpoint}?key=${apiKey}`;
+        async function callGemini(payload, isTTS = false) {
+            // Use correct model for TTS vs Text
+            const model = isTTS ? "gemini-2.5-flash-preview-tts" : "gemini-2.5-flash-preview-09-2025";
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
             
             for (let i = 0; i < 5; i++) {
                 try {
@@ -365,18 +367,26 @@
                     contents: [{ parts: [{ text: textToSpeak }] }],
                     generationConfig: {
                         responseModalities: ["AUDIO"],
-                        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } } }
+                        speechConfig: { 
+                            voiceConfig: { 
+                                prebuiltVoiceConfig: { voiceName: "Puck" } 
+                            } 
+                        }
                     }
-                }, "generateContent");
+                }, true); // Pass true for TTS model
 
                 const base64Data = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
                 if (base64Data) {
+                    // Convert PCM16 to WAV for playback
                     const pcmData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
                     const wavBlob = pcmToWav(pcmData, 24000);
                     const audio = new Audio(URL.createObjectURL(wavBlob));
                     audio.play();
+                } else {
+                    throw new Error("No audio data");
                 }
             } catch (err) {
+                console.error(err);
                 showToast("Voice greeting failed.");
             } finally {
                 ttsBtn.disabled = false;
@@ -407,18 +417,28 @@
             return new Blob([header, buffer], { type: 'audio/wav' });
         }
 
+        function getShareUrl(name, wish) {
+            const url = new URL(window.location.origin + window.location.pathname);
+            url.searchParams.set('n', name);
+            url.searchParams.set('w', wish);
+            return url.toString();
+        }
+
         function applySettings() {
-            const name = document.getElementById('nameInput').value.trim();
-            if (name) {
-                document.getElementById('senderName').innerText = name;
-                document.getElementById('introGreeting').innerText = `${name} sent you a message`;
+            const nameInput = document.getElementById('nameInput');
+            const newName = nameInput.value.trim();
+            if (newName) {
+                document.getElementById('senderName').innerText = newName;
+                document.getElementById('introGreeting').innerText = `${newName} sent you a message`;
                 
-                const url = new URL(window.location.href);
-                url.searchParams.set('n', name);
-                url.searchParams.set('w', currentWish);
+                const newUrl = getShareUrl(newName, currentWish);
                 try {
-                    window.history.pushState({}, '', url.toString());
-                } catch (e) {}
+                    // Update URL without full refresh, handle security error
+                    window.history.replaceState({}, '', newUrl);
+                } catch (e) {
+                    console.warn('History API restricted');
+                }
+                
                 showToast("Personalized! Ready to share.");
                 toggleCustomizer();
             }
@@ -426,10 +446,8 @@
 
         function shareOnWhatsApp() {
             const name = document.getElementById('senderName').innerText;
-            const url = new URL(window.location.href);
-            url.searchParams.set('n', name);
-            url.searchParams.set('w', currentWish);
-            const text = encodeURIComponent(`✨ *Happy New Year 2026!* ✨\n\n${name} is wishing you a Happy New Year. Open your surprise here:\n\n${url.toString()}`);
+            const link = getShareUrl(name, currentWish);
+            const text = encodeURIComponent(`✨ *Happy New Year 2026!* ✨\n\n${name} is wishing you a Happy New Year. Open your surprise here:\n\n${link}`);
             window.open(`https://wa.me/?text=${text}`, '_blank');
         }
 
