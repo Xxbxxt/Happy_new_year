@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy New Year 2026 - AI Enhanced Greeting</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #050505;
+            font-family: 'Poppins', sans-serif;
+            color: white;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .dancing-script { font-family: 'Dancing Script', cursive; }
+
+        /* Curtain Animation */
+        .curtain-container {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            display: flex;
+            transition: visibility 1.2s;
+        }
+
+        .curtain-left, .curtain-right {
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(135deg, #8b0000 0%, #4a0000 100%);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 1.2s cubic-bezier(0.7, 0, 0.3, 1);
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+
+        .curtain-left::after, .curtain-right::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: rgba(255, 215, 0, 0.3);
+        }
+        .curtain-left::after { right: 0; }
+        .curtain-right::after { left: 0; }
+
+        body.opened .curtain-left { transform: translateX(-100%); }
+        body.opened .curtain-right { transform: translateX(100%); }
+        body.opened .curtain-container { pointer-events: none; visibility: hidden; }
+
+        @keyframes shake {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(-5deg) scale(1.1); }
+            75% { transform: rotate(5deg) scale(1.1); }
+        }
+        .gift-trigger {
+            cursor: pointer;
+            animation: shake 1.5s infinite;
+            z-index: 110;
+        }
+
+        #fireworksCanvas {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .content-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 2.5rem 1.5rem;
+            max-width: 90%;
+            width: 450px;
+            z-index: 10;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 1s ease-out 0.8s;
+        }
+
+        body.opened .content-card {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #floatingAction {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 150;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) 2s;
+        }
+        body.opened #floatingAction {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .gold-text {
+            background: linear-gradient(to bottom, #fff7ad 0%, #ffa700 50%, #fff7ad 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+        }
+
+        .countdown-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 12px;
+            min-width: 60px;
+        }
+
+        #toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ffa700;
+            color: black;
+            padding: 10px 20px;
+            border-radius: 50px;
+            font-weight: bold;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 300;
+            pointer-events: none;
+        }
+
+        .loading-dots:after {
+            content: ' .';
+            animation: dots 1.5s steps(5, end) infinite;
+        }
+        @keyframes dots {
+            0%, 20% { content: ' .'; }
+            40% { content: ' . .'; }
+            60% { content: ' . . .'; }
+            80%, 100% { content: ''; }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <canvas id="fireworksCanvas"></canvas>
+    <div id="toast">Link copied!</div>
+
+    <!-- Intro Reveal Screen -->
+    <div id="curtainWrapper" class="curtain-container">
+        <div class="curtain-left"></div>
+        <div class="curtain-right"></div>
+        
+        <div class="absolute inset-0 flex flex-col items-center justify-center z-[110] text-center px-4" id="introUI">
+            <h2 id="introGreeting" class="text-2xl mb-8 font-light tracking-widest text-yellow-200 uppercase">You have a message</h2>
+            <div class="gift-trigger bg-white/10 p-8 rounded-full border border-yellow-500/30 backdrop-blur-sm" onclick="openMessage()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 12V8H4v4"/>
+                    <path d="M2 12h20"/>
+                    <path d="M7 12V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v5"/>
+                    <rect width="18" height="7" x="3" y="12" rx="1"/>
+                </svg>
+            </div>
+            <p class="mt-8 text-yellow-500 font-semibold tracking-widest animate-bounce uppercase">Touch to Open Surprise</p>
+        </div>
+    </div>
+
+    <!-- Main Message -->
+    <div class="content-card shadow-2xl relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 w-32 h-32 bg-yellow-500/20 rounded-full blur-3xl"></div>
+        <div class="absolute -bottom-10 -left-10 w-32 h-32 bg-red-500/20 rounded-full blur-3xl"></div>
+
+        <div class="mb-6">
+            <h3 id="senderName" class="dancing-script text-4xl gold-text inline-block">Gold_Roger</h3>
+            <p class="text-lg font-bold text-gray-300 mt-2 tracking-wide">is wishing you a</p>
+            <h2 class="text-3xl font-black gold-text uppercase tracking-tighter mt-1">Happy New Year</h2>
+        </div>
+        
+        <div class="space-y-4 text-lg font-light mb-8">
+            <div id="wishText" class="italic text-gray-200">
+                <p>From home to home 🏠</p>
+                <p>From heart to heart ❤️</p>
+            </div>
+            
+            <!-- Countdown Section -->
+            <div id="countdown" class="flex justify-center gap-2 py-4">
+                <div class="countdown-item">
+                    <div id="days" class="text-2xl font-bold gold-text">00</div>
+                    <div class="text-[10px] uppercase opacity-50">Days</div>
+                </div>
+                <div class="countdown-item">
+                    <div id="hours" class="text-2xl font-bold gold-text">00</div>
+                    <div class="text-[10px] uppercase opacity-50">Hrs</div>
+                </div>
+                <div class="countdown-item">
+                    <div id="minutes" class="text-2xl font-bold gold-text">00</div>
+                    <div class="text-[10px] uppercase opacity-50">Min</div>
+                </div>
+                <div class="countdown-item">
+                    <div id="seconds" class="text-2xl font-bold gold-text">00</div>
+                    <div class="text-[10px] uppercase opacity-50">Sec</div>
+                </div>
+            </div>
+
+            <div class="py-2">
+                <span class="text-xs uppercase tracking-[0.4em] text-yellow-500/80 block mb-1">To the year</span>
+                <h1 class="text-6xl font-black gold-text">2026</h1>
+            </div>
+        </div>
+
+        <div class="mt-4 pt-6 border-t border-white/10 flex flex-col gap-3">
+            <button onclick="speakWish()" id="ttsBtn" class="w-full bg-white/5 border border-white/10 text-white font-bold py-3 rounded-2xl hover:bg-white/10 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                Listen to Wish ✨
+            </button>
+            <button onclick="toggleCustomizer()" class="w-full bg-yellow-500 text-black font-bold py-4 rounded-2xl hover:bg-yellow-400 transition-all shadow-lg uppercase text-sm tracking-widest">
+                Create Your Own Wish
+            </button>
+        </div>
+
+        <!-- Corner Credit -->
+        <div class="absolute bottom-2 left-4 text-[8px] uppercase tracking-widest text-white/20">
+            Created by Gold_Roger
+        </div>
+    </div>
+
+    <!-- Floating Action -->
+    <div id="floatingAction">
+        <button onclick="toggleCustomizer()" class="bg-yellow-500 text-black p-4 rounded-full shadow-2xl flex items-center gap-2 font-bold hover:scale-110 transition-transform">
+             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+             <span class="hidden md:inline">CREATE YOURS</span>
+        </button>
+    </div>
+
+    <!-- Customizer Modal -->
+    <div id="customizer" class="fixed inset-0 bg-black/95 z-[200] hidden items-center justify-center p-6">
+        <div class="bg-zinc-900 border border-white/10 p-8 rounded-3xl w-full max-w-md shadow-2xl overflow-y-auto max-h-[90vh]">
+            <h4 class="text-xl font-bold mb-2">Personalize Your Greeting</h4>
+            <p class="text-xs text-gray-400 mb-6">Set your name and use Gemini AI to create a unique wish!</p>
+            
+            <label class="text-[10px] uppercase tracking-widest text-gray-500 mb-1 block">Your Name</label>
+            <input type="text" id="nameInput" placeholder="Enter your name..." class="w-full bg-black border border-white/20 rounded-xl px-4 py-3 mb-6 focus:border-yellow-500 outline-none text-white text-lg">
+            
+            <div class="border-t border-white/10 pt-6 mb-6">
+                <label class="text-[10px] uppercase tracking-widest text-yellow-500 mb-3 block">Gemini Wish Magic ✨</label>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <button onclick="generateMagicWish('poetic')" class="vibe-btn p-2 text-[10px] border border-white/20 rounded-lg hover:border-yellow-500 hover:text-yellow-500 uppercase tracking-tighter">Poetic 📜</button>
+                    <button onclick="generateMagicWish('funny')" class="vibe-btn p-2 text-[10px] border border-white/20 rounded-lg hover:border-yellow-500 hover:text-yellow-500 uppercase tracking-tighter">Funny 😂</button>
+                    <button onclick="generateMagicWish('heartfelt')" class="vibe-btn p-2 text-[10px] border border-white/20 rounded-lg hover:border-yellow-500 hover:text-yellow-500 uppercase tracking-tighter">Heartfelt ❤️</button>
+                    <button onclick="generateMagicWish('casual')" class="vibe-btn p-2 text-[10px] border border-white/20 rounded-lg hover:border-yellow-500 hover:text-yellow-500 uppercase tracking-tighter">Casual 😎</button>
+                </div>
+                <div id="magicLoader" class="hidden text-xs text-center text-yellow-500 mb-4 animate-pulse">Gemini is writing your wish<span class="loading-dots"></span></div>
+            </div>
+            
+            <div class="flex flex-col gap-3">
+                <button onclick="applySettings()" class="w-full bg-yellow-500 text-black font-bold py-3 rounded-xl hover:bg-yellow-400 transition-colors uppercase text-sm tracking-wider">Save Changes</button>
+                <button onclick="shareOnWhatsApp()" class="w-full bg-[#25D366] text-white font-bold py-3 rounded-xl hover:bg-[#128C7E] transition-colors flex items-center justify-center gap-2 uppercase text-sm tracking-wider">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.319 1.592 5.548 0 10.058-4.51 10.06-10.059.002-2.689-1.047-5.215-2.951-7.121-1.905-1.905-4.434-2.956-7.125-2.956-5.548 0-10.059 4.511-10.061 10.06-.001 2.105.549 4.154 1.588 5.946l-.1.157-1.104 4.028 4.133-1.083.157-.087c.01.01.01.01 0 0zm11.367-7.643c-.301-.15-1.779-.879-2.056-.978-.277-.1-.479-.15-.68.15-.201.301-.779.978-.954 1.178-.175.201-.351.226-.651.075-.3-.15-1.268-.467-2.416-1.492-.893-.797-1.495-1.782-1.67-2.083-.175-.301-.019-.464.132-.613.135-.133.301-.351.451-.527.15-.175.201-.301.301-.502.1-.201.05-.376-.025-.527-.075-.15-.68-1.631-.931-2.232-.244-.585-.494-.505-.68-.514-.175-.009-.376-.01-.577-.01s-.527.075-.802.376c-.276.301-1.053 1.028-1.053 2.507s1.078 2.908 1.228 3.108c.15.201 2.122 3.241 5.14 4.542.717.31 1.277.494 1.711.631.721.23 1.376.197 1.894.12.576-.087 1.779-.727 2.03-1.43.25-.702.25-1.303.175-1.43-.075-.125-.276-.201-.576-.351z"/></svg>
+                    Share on WhatsApp
+                </button>
+                <button onclick="toggleCustomizer()" class="w-full py-3 text-gray-400 text-sm">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const apiKey = ""; // Gemini API Key
+        let currentWish = "From home to home 🏠\nFrom heart to heart ❤️";
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const nameParam = urlParams.get('n');
+        const wishParam = urlParams.get('w');
+        const defaultName = 'Gold_Roger';
+        const senderName = nameParam ? decodeURIComponent(nameParam).replace(/-/g, ' ') : defaultName;
+
+        if (wishParam) {
+            currentWish = decodeURIComponent(wishParam);
+            document.getElementById('wishText').innerHTML = currentWish.split('\n').map(l => `<p>${l}</p>`).join('');
+        }
+
+        document.getElementById('senderName').innerText = senderName;
+        if (nameParam) {
+            document.getElementById('introGreeting').innerText = `${senderName} sent you a message`;
+        }
+
+        function openMessage() {
+            document.body.classList.add('opened');
+            setTimeout(() => {
+                const intro = document.getElementById('introUI');
+                if (intro) intro.style.display = 'none';
+            }, 1200);
+            initFireworks();
+            startCountdown();
+        }
+
+        function toggleCustomizer() {
+            const modal = document.getElementById('customizer');
+            modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        async function callGemini(payload, endpoint = "generateContent") {
+            const model = endpoint === "generateContent" ? "gemini-2.5-flash-preview-09-2025" : "gemini-2.5-flash-preview-tts";
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${endpoint}?key=${apiKey}`;
+            
+            for (let i = 0; i < 5; i++) {
+                try {
+                    const response = await fetch(url, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error("API call failed");
+                    return await response.json();
+                } catch (e) {
+                    if (i === 4) throw e;
+                    await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000));
+                }
+            }
+        }
+
+        async function generateMagicWish(vibe) {
+            const loader = document.getElementById('magicLoader');
+            loader.classList.remove('hidden');
+            const name = document.getElementById('nameInput').value || senderName;
+            
+            const prompt = `Write a very short 2-line rhyming New Year greeting for 2026 from ${name}. The vibe should be ${vibe}. Format it as two lines with emojis. No extra text.`;
+            
+            try {
+                const result = await callGemini({
+                    contents: [{ parts: [{ text: prompt }] }]
+                });
+                const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                    currentWish = text.trim();
+                    document.getElementById('wishText').innerHTML = currentWish.split('\n').map(l => `<p>${l}</p>`).join('');
+                    showToast(`Gemini magic applied! ✨`);
+                }
+            } catch (err) {
+                showToast("Magic wish failed. Try again.");
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+        async function speakWish() {
+            const ttsBtn = document.getElementById('ttsBtn');
+            const originalHtml = ttsBtn.innerHTML;
+            ttsBtn.disabled = true;
+            ttsBtn.innerHTML = "Preparing Voice ✨";
+
+            const name = document.getElementById('senderName').innerText;
+            const textToSpeak = `Cheerfully say: Happy New Year 2026! ${name} is wishing you a wonderful year ahead. ${currentWish}`;
+            
+            try {
+                const result = await callGemini({
+                    contents: [{ parts: [{ text: textToSpeak }] }],
+                    generationConfig: {
+                        responseModalities: ["AUDIO"],
+                        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } } }
+                    }
+                }, "generateContent");
+
+                const base64Data = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+                if (base64Data) {
+                    const pcmData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
+                    const wavBlob = pcmToWav(pcmData, 24000);
+                    const audio = new Audio(URL.createObjectURL(wavBlob));
+                    audio.play();
+                }
+            } catch (err) {
+                showToast("Voice greeting failed.");
+            } finally {
+                ttsBtn.disabled = false;
+                ttsBtn.innerHTML = originalHtml;
+            }
+        }
+
+        function pcmToWav(pcmBuffer, sampleRate) {
+            const buffer = new Uint8Array(pcmBuffer);
+            const header = new ArrayBuffer(44);
+            const view = new DataView(header);
+            const writeString = (offset, string) => {
+                for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+            };
+            writeString(0, 'RIFF');
+            view.setUint32(4, 32 + buffer.length, true);
+            writeString(8, 'WAVE');
+            writeString(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(36, 'data');
+            view.setUint32(40, buffer.length, true);
+            return new Blob([header, buffer], { type: 'audio/wav' });
+        }
+
+        function applySettings() {
+            const name = document.getElementById('nameInput').value.trim();
+            if (name) {
+                document.getElementById('senderName').innerText = name;
+                document.getElementById('introGreeting').innerText = `${name} sent you a message`;
+                
+                const url = new URL(window.location.href);
+                url.searchParams.set('n', name);
+                url.searchParams.set('w', currentWish);
+                try {
+                    window.history.pushState({}, '', url.toString());
+                } catch (e) {}
+                showToast("Personalized! Ready to share.");
+                toggleCustomizer();
+            }
+        }
+
+        function shareOnWhatsApp() {
+            const name = document.getElementById('senderName').innerText;
+            const url = new URL(window.location.href);
+            url.searchParams.set('n', name);
+            url.searchParams.set('w', currentWish);
+            const text = encodeURIComponent(`✨ *Happy New Year 2026!* ✨\n\n${name} is wishing you a Happy New Year. Open your surprise here:\n\n${url.toString()}`);
+            window.open(`https://wa.me/?text=${text}`, '_blank');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.style.opacity = '1';
+            setTimeout(() => { toast.style.opacity = '0'; }, 2500);
+        }
+
+        function startCountdown() {
+            const targetDate = new Date("Jan 1, 2026 00:00:00").getTime();
+            const timer = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = targetDate - now;
+                if (distance < 0) {
+                    clearInterval(timer);
+                    document.getElementById('countdown').innerHTML = "<p class='text-yellow-500 font-bold text-xl'>THE CELEBRATION HAS BEGUN!</p>";
+                    return;
+                }
+                document.getElementById('days').innerText = Math.floor(distance / (1000 * 60 * 60 * 24)).toString().padStart(2, '0');
+                document.getElementById('hours').innerText = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)).toString().padStart(2, '0');
+                document.getElementById('minutes').innerText = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)).toString().padStart(2, '0');
+                document.getElementById('seconds').innerText = Math.floor((distance % (1000 * 60)) / 1000).toString().padStart(2, '0');
+            }, 1000);
+        }
+
+        const canvas = document.getElementById('fireworksCanvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+        window.addEventListener('resize', resize);
+        resize();
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y; this.color = color;
+                this.velocity = { x: (Math.random() - 0.5) * 8, y: (Math.random() - 0.5) * 12 };
+                this.alpha = 1; this.friction = 0.96;
+            }
+            draw() { ctx.globalAlpha = this.alpha; ctx.beginPath(); ctx.arc(this.x, this.y, 2, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill(); }
+            update() { this.velocity.x *= this.friction; this.velocity.y *= this.friction; this.velocity.y += 0.08; this.x += this.velocity.x; this.y += this.velocity.y; this.alpha -= 0.01; }
+        }
+
+        function createFirework(x, y) {
+            const colors = ['#ff0000', '#ffd700', '#ffffff', '#ff69b4', '#00ffff'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            for (let i = 0; i < 50; i++) particles.push(new Particle(x, y, color));
+        }
+
+        function initFireworks() {
+            function animate() {
+                ctx.fillStyle = 'rgba(5, 5, 5, 0.15)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                particles.forEach((p, i) => { if (p.alpha > 0) { p.update(); p.draw(); } else { particles.splice(i, 1); } });
+                if (Math.random() < 0.06) createFirework(Math.random() * canvas.width, Math.random() * canvas.height * 0.6);
+                requestAnimationFrame(animate);
+            }
+            animate();
+        }
+    </script>
+</body>
+</html>
