@@ -273,7 +273,9 @@
     </div>
 
     <script>
-        const apiKey = ""; // Managed by environment
+        // API KEY: Set this to your key when hosting externally.
+        const apiKey = ""; 
+
         let currentWish = "From home to home 🏠\nFrom heart to heart ❤️";
 
         // Initial setup from URL
@@ -308,8 +310,10 @@
             modal.style.display = modal.style.display === 'flex' ? 'none' : 'flex';
         }
 
+        /**
+         * Robust call to Gemini API with exponential backoff.
+         */
         async function callGemini(payload, isTTS = false) {
-            // Use correct model for TTS vs Text
             const model = isTTS ? "gemini-2.5-flash-preview-tts" : "gemini-2.5-flash-preview-09-2025";
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
             
@@ -320,10 +324,18 @@
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(payload)
                     });
-                    if (!response.ok) throw new Error("API call failed");
+                    
+                    if (response.status === 403) {
+                        console.error("403 Forbidden: Check if API key is set correctly in the source code.");
+                        throw new Error("Invalid API Key or Restricted Origin");
+                    }
+
+                    if (!response.ok) throw new Error(`API call failed with status: ${response.status}`);
+                    
                     return await response.json();
                 } catch (e) {
-                    if (i === 4) throw e;
+                    if (i === 4 || response?.status === 403) throw e;
+                    // Exponential backoff
                     await new Promise(r => setTimeout(r, Math.pow(2, i) * 1000));
                 }
             }
@@ -347,7 +359,7 @@
                     showToast(`Gemini magic applied! ✨`);
                 }
             } catch (err) {
-                showToast("Magic wish failed. Try again.");
+                showToast("Magic wish failed. Check API key.");
             } finally {
                 loader.classList.add('hidden');
             }
@@ -373,21 +385,20 @@
                             } 
                         }
                     }
-                }, true); // Pass true for TTS model
+                }, true);
 
                 const base64Data = result.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
                 if (base64Data) {
-                    // Convert PCM16 to WAV for playback
                     const pcmData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0)).buffer;
                     const wavBlob = pcmToWav(pcmData, 24000);
                     const audio = new Audio(URL.createObjectURL(wavBlob));
                     audio.play();
                 } else {
-                    throw new Error("No audio data");
+                    throw new Error("No audio data returned");
                 }
             } catch (err) {
                 console.error(err);
-                showToast("Voice greeting failed.");
+                showToast("Voice greeting failed. Check API key.");
             } finally {
                 ttsBtn.disabled = false;
                 ttsBtn.innerHTML = originalHtml;
@@ -418,7 +429,8 @@
         }
 
         function getShareUrl(name, wish) {
-            const url = new URL(window.location.origin + window.location.pathname);
+            // Robust URL generation for various hosting environments
+            const url = new URL(window.location.href);
             url.searchParams.set('n', name);
             url.searchParams.set('w', wish);
             return url.toString();
@@ -433,10 +445,9 @@
                 
                 const newUrl = getShareUrl(newName, currentWish);
                 try {
-                    // Update URL without full refresh, handle security error
                     window.history.replaceState({}, '', newUrl);
                 } catch (e) {
-                    console.warn('History API restricted');
+                    console.warn('History API restricted in this environment');
                 }
                 
                 showToast("Personalized! Ready to share.");
